@@ -45,7 +45,7 @@ resource "aws_elasticache_replication_group" "default" {
   # The port number on which the cache accepts connections.
   # Redis' default port is 6379.
   port = var.port
-  
+
   # Every cluster has a weekly maintenance window during which any system
   # changes are applied. Specifies the weekly time range during which
   # maintenance on the cluster is performed. It is specified as a range in
@@ -76,6 +76,30 @@ resource "aws_elasticache_replication_group" "default" {
   # ref: https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/AutoFailover.html
   automatic_failover_enabled = var.automatic_failover_enabled
 
+  # Redis at-rest encryption is an optional feature to increase data security 
+  # by encrypting on-disk data during sync and backup or snapshot operations. 
+  # Because there is some processing needed to encrypt and decrypt the data, 
+  # enabling at-rest encryption can have some performance impact during these 
+  # operations.
+  #
+  # ref: https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/at-rest-encryption.html
+  at_rest_encryption_enabled = var.at_rest_encryption_enabled
+
+  # The ARN of the key that you wish to use if encrypting at rest.
+  kms_key_id = aws_kms_key.default.id
+
+  # ElastiCache in-transit encryption is an optional feature that allows you to 
+  # increase the security of your data at its most vulnerable points—when it 
+  # is in transit from one location to another. Because there is some processing 
+  # needed to encrypt and decrypt the data at the endpoints, enabling in-transit 
+  # encryption can have some performance impact.
+  #
+  # ref: https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/in-transit-encryption.html
+  transit_encryption_enabled = var.transit_encryption_enabled
+
+  # Password used to access a password protected server.
+  auth_token = var.auth_token
+
   # Whether any modifications are applied immediately, or during the next
   # maintenance window.
   #
@@ -84,15 +108,13 @@ resource "aws_elasticache_replication_group" "default" {
 
   # Specifies whether minor version engine upgrades will be applied 
   # automatically to the cache during the maintenance window.
-  #
-  # ref:
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
 
   # Version number of the cache engine to be used. If not set, defaults to the
   # latest version.
   #
   # ref: https://docs.aws.amazon.com/cli/latest/reference/elasticache/describe-cache-engine-versions.html
-  engine_version  = var.engine_version
+  engine_version = var.engine_version
 
   # A user-created description for the replication group.
   description = var.description
@@ -114,9 +136,10 @@ resource "aws_elasticache_subnet_group" "default" {
 }
 
 resource "aws_security_group" "default" {
-  name   = local.security_group_name
-  vpc_id = var.vpc_id
-  tags   = merge({ "Name" = local.security_group_name }, var.tags)
+  name        = local.security_group_name
+  vpc_id      = var.vpc_id
+  tags        = merge({ "Name" = local.security_group_name }, var.tags)
+  description = "The default ElastiCache Security Group."
 }
 
 locals {
@@ -130,6 +153,7 @@ resource "aws_security_group_rule" "ingress" {
   protocol          = "tcp"
   cidr_blocks       = var.source_cidr_blocks
   security_group_id = aws_security_group.default.id
+  description       = "Allow the default Redis port."
 }
 
 resource "aws_security_group_rule" "egress" {
@@ -139,4 +163,10 @@ resource "aws_security_group_rule" "egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.default.id
+  description       = "Allow unrestricted egress traffic."
+}
+
+resource "aws_kms_key" "default" {
+  description         = "${var.name}-elasticache-redis"
+  enable_key_rotation = true
 }

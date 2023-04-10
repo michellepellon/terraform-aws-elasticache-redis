@@ -93,3 +93,20 @@ variable "tags" {
   type        = map(string)
   description = "A mapping of tags to assign to all resources."
 }
+
+variable "at_rest_encryption_enabled" {
+  default     = true
+  type        = bool
+  description = "Whether to enable encryption at rest."
+}
+
+variable "transit_encryption_enabled" {
+  default     = true
+  type        = bool
+  description = "Whether to enable encryption in transit."
+}
+
+variable "auth_token" {
+  type        = string
+  description = "The Redis AUTH token."
+}
